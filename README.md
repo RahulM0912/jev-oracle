@@ -2,6 +2,8 @@
 
 Small Next.js app for trying out TypeSafe's **Jev** decision model. Pick a mode, ask something, get a typed decision.
 
+**▶ Try it live: https://jev-oracle-ten.vercel.app**: no sign-up needed. Start with [Jev's Secret](https://jev-oracle-ten.vercel.app/secret), [Convince the Bouncer](https://jev-oracle-ten.vercel.app/bouncer) or [Tic-Tac-Toe](https://jev-oracle-ten.vercel.app/tictactoe). The live site answers with real Jev and is rate-limited to 30 requests per minute per visitor.
+
 | Mode | Jev answer type |
 |---|---|
 | 🔮 Fortune Teller | `noul` (yes/no probability) |
@@ -26,6 +28,18 @@ npm test                     # unit + API route tests (no key needed)
 ```
 
 Set `JEV_PROVIDER=mock` to build the UI without spending credits.
+
+## Deploy
+
+Hosted on Vercel at https://jev-oracle-ten.vercel.app. Every push to `main` deploys production; other branches get preview deployments.
+
+| Setting | Production | Preview |
+|---|---|---|
+| `JEV_PROVIDER` | `typesafe` | `mock` (no credits spent) |
+| `TYPESAFE_API_KEY` | set (sensitive) | not set |
+| `GAME_SECRET` | optional; derived from the API key when unset | |
+
+A Vercel Firewall rule rate-limits `POST /api/*` to 30 requests per minute per IP, so a public URL can't drain the Jev credits. Blocked requests return 429 and never reach Jev. Environment variable changes only apply to new deployments, so redeploy after changing one.
 
 ## Layout
 
