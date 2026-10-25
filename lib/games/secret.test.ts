@@ -100,6 +100,17 @@ describe("tokens", () => {
     expect(open("nope")).toBeNull();
     expect(open(42)).toBeNull();
   });
+
+  it("derive their key from the API key when GAME_SECRET is unset", () => {
+    vi.stubEnv("GAME_SECRET", "");
+    vi.stubEnv("TYPESAFE_API_KEY", "key-one");
+    const s = { name: "kite", aliases: [], category: "objects" as const };
+    const t = seal(s);
+    expect(open(t)).toEqual(s);
+    vi.stubEnv("TYPESAFE_API_KEY", "key-two");
+    expect(open(t)).toBeNull(); // another deployment's key can't read it
+    vi.unstubAllEnvs();
+  });
 });
 
 describe("POST /api/secret", () => {

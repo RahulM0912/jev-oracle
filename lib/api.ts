@@ -15,6 +15,8 @@ async function post<T>(url: string, body: unknown): Promise<T> {
     throw new Error("Can't reach the server. Check your connection.");
   }
   const json = await res.json().catch(() => ({}));
+  // 429 comes from the Vercel Firewall rate limit, before our route runs.
+  if (res.status === 429) throw new Error("Whoa, slow down! Too many questions at once. Wait a minute and try again.");
   if (!res.ok) throw new Error(json.error ?? "The oracle is sleeping. Try again in a moment.");
   return json as T;
 }
