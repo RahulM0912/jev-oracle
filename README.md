@@ -1,36 +1,64 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Jev Oracle
 
-## Getting Started
+Small Next.js app for trying out TypeSafe's **Jev** decision model. Pick a mode, ask something, get a typed decision.
 
-First, run the development server:
+| Mode | Jev answer type |
+|---|---|
+| 🔮 Fortune Teller | `noul` (yes/no probability) |
+| 🎱 Magic 8-Ball | `noul`, mapped to the 20 classic replies |
+| 🧱 Stack Ranker | `choice` (probability per option, sorted) |
+| ⚖️ Option Scorer | `score` per option (0–10) + `choice` for the single best pick |
+| 🤖 AI-Style Meter | 5 × `noul` over the same text: overall + 4 style signals (composite scoring) |
+| 🔥 Roast My Idea | `score` (4 criteria, 0–3 rubric) |
+| 🚪 Convince the Bouncer *(game)* | `noul` per line; 4 clubs with rising bars, 3 tries each, rejected lines sent back so repeats fail |
+| 🤫 Jev's Secret *(game)* | 3 × `noul` per question (answer, is it yes/no, does it name the secret) + 1 `noul` for fuzzy guesses; 250 hand-picked secrets or a friend's (party mode) |
+| ⭕ Tic-Tac-Toe *(game)* | `choice` over empty squares; Easy = raw Jev, Hard = code-computed threat hints, Impossible = hints + only minimax-safe squares offered |
+
+Every mode result has **Check consistency (ask 5×)** and **Show what was sent to Jev** for testing. Games keep score in `localStorage`; tic-tac-toe hides its report card behind **Show Jev's thinking**.
+
+## Run
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cp .env.example .env.local   # add TYPESAFE_API_KEY, set JEV_PROVIDER=typesafe
+npm install
+npm run dev                  # http://localhost:3000  (or: npx next dev -p 3100)
+npm test                     # unit + API route tests (no key needed)
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Set `JEV_PROVIDER=mock` to build the UI without spending credits.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Layout
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```
+lib/jev/        Jev client (server-only, holds the key), types, mock provider  ← reusable in other projects
+lib/modes/      one file per mode: prompts + result helpers, plain TypeScript
+app/api/jev/    POST { mode, input } → validates, builds prompts, calls Jev
+lib/games/      tic-tac-toe (rules, minimax, move review), bouncer (clubs, reactions), secret (prompts, matching);
+                secrets.ts = the secret list and secretToken.ts = AES-GCM tokens, both server-only
+app/api/tictactoe/  POST { board, level } → Jev picks O's move
+app/api/bouncer/    POST { club, line, earlier } → how convinced the bouncer is
+app/api/secret/     POST { action: new | ask | guess | reveal } → secret travels as an encrypted token
+app/[mode]/     one page per mode; app/bouncer/, app/secret/ and app/tictactoe/ for games
+components/     ModeRunner, MagicBall, OptionsEditor, Results, Consistency, TicTacToe, Bouncer, SecretGame, Confetti
+design/demo.html  original static mockup
+```
 
-## Learn More
+## Add a mode
 
-To learn more about Next.js, take a look at the following resources:
+1. Create `lib/modes/<name>.ts` exporting a `ModeDef` (see `fortune.ts` for the smallest one).
+2. Add it to `MODES` in `lib/modes/index.ts` and its id to `ModeId` in `lib/modes/types.ts`.
+3. Add a result view branch in `components/Results.tsx`.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Reuse Jev in another project
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Copy `lib/jev/` and call it from server code only:
 
-## Deploy on Vercel
+```ts
+import { askJev } from "./lib/jev/client";
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+const res = await askJev({
+  state: "Customer email: my payouts failed for 3 days",
+  questions: { urgent: { type: "noul", instructions: "Is this urgent?" } },
+});
+res.answers.urgent; // { type: "noul", noul: 0.93 }
+```
